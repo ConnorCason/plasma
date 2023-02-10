@@ -16,6 +16,14 @@ def getinfo():
     r = requests.get(url, headers=headers, verify=TLS_PATH)
     return json.dumps(r.json(), indent=2)
 
+def getforwardinghistory():
+    log.info('Retreiving forwarding history from /switch...')
+    url = f'https://{REST_HOST}/v1/switch'
+    macaroon = codecs.encode(open(MACAROON_PATH, 'rb').read(), 'hex')
+    headers = {'Grpc-Metadata-macaroon': macaroon}
+    r = requests.get(url, headers=headers, verify=TLS_PATH)
+    return json.dumps(r.json(), indent=2)
+
 
 if __name__ == "__main__":
     log.info(
@@ -26,4 +34,4 @@ if __name__ == "__main__":
         $TLS_PATH = {TLS_PATH}
     '''
     )
-    print(getinfo())
+    print(getforwardinghistory())
