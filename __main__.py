@@ -1,6 +1,7 @@
-import base64, codecs, logging, os, json, requests
+import base64, codecs, logging, os, json, requests, sys
 
-log = logging.getLogger()
+logging.basicConfig()
+log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 REST_HOST = os.environ.get('LND_REST_HOST')
@@ -19,6 +20,10 @@ if __name__ == "__main__":
     '''
     )
     url = f'https://{REST_HOST}/v1/getinfo'
+    log.info(MACAROON_PATH)
+    file_like = open(MACAROON_PATH, 'rb')
+    print(file_like)
+    print(type(file_like))
     macaroon = codecs.encode(open(MACAROON_PATH, 'rb').read(), 'hex')
     headers = {'Grpc-Metadata-macaroon': macaroon}
     r = requests.get(url, headers=headers, verify=TLS_PATH)
