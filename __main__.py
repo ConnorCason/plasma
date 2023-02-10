@@ -1,4 +1,4 @@
-import base64, codecs, logging, os, json, requests, sys
+import base64, codecs, logging, os, json, requests, sys, time
 
 logging.basicConfig()
 log = logging.getLogger()
@@ -21,7 +21,11 @@ def getforwardinghistory():
     url = f'https://{REST_HOST}/v1/switch'
     macaroon = codecs.encode(open(MACAROON_PATH, 'rb').read(), 'hex')
     headers = {'Grpc-Metadata-macaroon': macaroon}
-    r = requests.get(url, headers=headers, verify=TLS_PATH)
+    # data = {
+    #     'start_time': 1,
+    #     'end_time': time()
+    # }
+    r = requests.post(url, headers=headers, verify=TLS_PATH)
     return json.dumps(r.json(), indent=2)
 
 
