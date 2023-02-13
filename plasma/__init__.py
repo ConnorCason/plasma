@@ -1,6 +1,15 @@
 import config
 
 
+def get_routing_metrics(forwards):
+    for f in forwards:
+        print(f)
+
+        # print(f"Made {f['fee']} settling {f['']}")
+
+
+
+
 # def get_routing_metrics(forwards):
     # daily_seconds = 86400
     # time_deltas = {
