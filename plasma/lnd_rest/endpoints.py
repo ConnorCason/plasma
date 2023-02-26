@@ -96,7 +96,7 @@ def get_htlc_events():
 
 def add_invoice(sat_amt):
     _data = {
-        'expiry': 600,
+        'expiry': 60,
         'value': sat_amt
     }
     return send_request(

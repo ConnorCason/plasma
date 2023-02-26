@@ -19,9 +19,8 @@ replace_dict = {
 def find_route(source_pubkey, dest_pubkey, sat_amt, ln_g):
     if not ln_g:
         ln_g = build_lightning_multidigraph(sat_amt)
-    
-    print(f'Trying to route ( {sat_amt} )sat\nfrom: ( {source_pubkey} )\
-    \nto: ( {dest_pubkey} )\n')
+        print(f'Finding route for:\n~{sat_amt} sat\n-from: {source_pubkey} \
+        \n+to: {dest_pubkey}\n')
 
     path = nx.dijkstra_path(ln_g, source_pubkey,
         dest_pubkey, weight='cost')
@@ -34,13 +33,24 @@ def find_route(source_pubkey, dest_pubkey, sat_amt, ln_g):
         ed = ln_g.get_edge_data(path[i], path[i+1])
         chs.append(ed)
     
-    summary = ''
-    for i in range(len(chs)):
-        summary += alias_path[i]
+    print(f'Attempting route (alias / cost):')
+    c_buff = '                 '
+    tc = 0
+    for alias in alias_path:
+        curr_buff = c_buff[:len(c_buff) - len(alias)]
         connecting_channel_cost = int(chs[i][0]['cost'])
-        summary += f' --{connecting_channel_cost}sat--> '
-    summary += alias_path[len(alias_path)-1]
-    print(f'Attempting route:\n{summary}')
+        print(f'{alias}{curr_buff}{connecting_channel_cost}')
+        tc += connecting_channel_cost
+    print(f'{c_buff}{tc}')
+
+
+    # summary = ''
+    # for i in range(len(chs)):
+    #     summary += alias_path[i]
+    #     connecting_channel_cost = int(chs[i][0]['cost'])
+    #     summary += f' --{connecting_channel_cost}sat--> '
+    # summary += alias_path[len(alias_path)-1]
+    # print(f'Attempting route:\n{summary}')
     # cps = [ch[0]['chan_point'] for ch in chs]
     # print(f'chan points: {cps}')
 
