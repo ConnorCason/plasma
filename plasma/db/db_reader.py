@@ -64,3 +64,5 @@ def get_node_channels(pubkey, _print=False):
         print(tabulate(ordered_aliases))
 
     return with_aliases
+
+    
