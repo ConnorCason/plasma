@@ -4,6 +4,7 @@ import plasma.db.db_reader as reader
 import plasma.db.db_writer as writer
 import plasma.db.db_utils as utils
 import plasma.rebalance as router
+import plasma.event_listener as listener
 
 import json
 import time
@@ -12,12 +13,13 @@ import time
 if __name__ == "__main__":
     writer.update_dbs(rebuild_network_topology=False)
 
+    listener.start_event_listener()
 
     # AlphaStreet
-    _from = '0323aac79814817b023ce6e4eac13c961df213e773e901f74fa4c9477f22e0f304'
+    # _from = '0323aac79814817b023ce6e4eac13c961df213e773e901f74fa4c9477f22e0f304'
+
     # MemecoinKiller
     # _to = '021fdbe0467f99673059db47f2e41a7b9430b200e2bdfdff39a1db0bee8428d069'
-    
 
     # TK21
     # _to = '039f1f720ddf57f51cc029f6cee7bd56bd57e1fa42146a5106744fa516aefe07c4'
@@ -29,20 +31,20 @@ if __name__ == "__main__":
     # _to = '03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f'
 
     # CryptoChill
-    _to = '03df3f0a2fd6bea5429a596461ce784c922b2981ada1af89cfefcd9ccfb16c16a7'
+    # _to = '03df3f0a2fd6bea5429a596461ce784c922b2981ada1af89cfefcd9ccfb16c16a7'
 
-    sat_amt = 1000
-    max_fee = 2
-    max_hops = 3
+    # sat_amt = 1000
+    # max_fee = 2
+    # max_hops = 3
 
-    router.rebalance(
-        _from,
-        _to,
-        sat_amt,
-        max_fee,
-        max_hops,
-        'cheapest'
-    )
+    # router.rebalance(
+    #     _from,
+    #     _to,
+    #     sat_amt,
+    #     max_fee,
+    #     max_hops,
+    #     'cheapest'
+    # )
 
 
 

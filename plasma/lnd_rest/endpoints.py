@@ -7,7 +7,7 @@ REST_HOST = os.environ.get('LND_REST_HOST')
 TLS_PATH = os.environ.get('LND_TLS_PATH')
 
 # Return models?
-def send_request(_type, endpoint, data=None):
+def send_request(_type, endpoint, data=None, stream=None):
     url = f'https://{REST_HOST}/{endpoint}'
     headers = {'Grpc-Metadata-macaroon': MACAROON}
     res = None
@@ -20,6 +20,14 @@ def send_request(_type, endpoint, data=None):
             data=json.dumps(data),
             verify=TLS_PATH
         )
+    elif _type == 'stream':
+        res = requests.post(
+            url, 
+            headers=headers, 
+            stream=stream,
+            verify=TLS_PATH
+        )
+        return res
     
     return res.json()
 
@@ -84,7 +92,7 @@ def get_graph():
 
 # Exploratory   
 def get_htlc_events():
-    return send_request('GET', 'v2/router/htlcevents')
+    return send_request('GET', 'v2/router/htlcevents', stream=True)
 
 
 # Payments 
