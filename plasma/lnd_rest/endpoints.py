@@ -51,12 +51,7 @@ def get_routes(dest_pubkey, sat_amt):
     return send_request('GET', f'v1/graph/routes/{dest_pubkey}/{sat_amt}')['routes']
 
 def build_route(sat_amt, outgoing_chan_id, hop_pubkeys, payment_address):
-
-    hop_pubkeys.append(hop_pubkeys.pop(0))
-    # print(f'Hops (pub / alias):')
-    # for pkey in hop_pubkeys:
-    #     print(f'{pkey} / {get_alias(pkey)}')
-
+    
     _data = {
         'amt_msat': str((sat_amt) * (10**3)),
         'final_cltv_delta': 144,
@@ -96,7 +91,7 @@ def get_htlc_events():
 
 def add_invoice(sat_amt):
     _data = {
-        'expiry': 60,
+        'expiry': 120,
         'value': sat_amt
     }
     return send_request(
