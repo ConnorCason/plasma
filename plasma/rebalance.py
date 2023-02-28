@@ -59,15 +59,11 @@ def find_shortest_path(source_pubkey, dest_pubkey,
 
 
 def find_cheapest_path(source_pubkey, dest_pubkey, sat_amt, 
-                        max_fee, max_hops, ln_g):
-    if not ln_g:
-        print(f'Finding cheapest path for:\n~{sat_amt} sat\n-from: {source_pubkey}\n+to: {dest_pubkey}\n')
-        ln_g = build_lightning_multidigraph(sat_amt)
-        ln_g.remove_edge(MY_PUBKEY, dest_pubkey)
+                        ln_g, max_fee=None, max_hops=6):
+    
+    print(f'Finding cheapest path for:\n~{sat_amt} sat\n-from: {d_utils.get_alias(source_pubkey)}\n+to: {d_utils.get_alias(dest_pubkey)}\n')
 
     # Return list of pubkeys
-    # First: own public key
-    # Last: pubkey of destination channel peer
     path = nx.dijkstra_path(ln_g, source_pubkey,
         dest_pubkey, weight='cost')
     
@@ -78,37 +74,19 @@ def find_cheapest_path(source_pubkey, dest_pubkey, sat_amt,
         ln_g.remove_edge(path[max_hops-1], path[max_hops])
         path = nx.dijkstra_path(ln_g, source_pubkey,
             dest_pubkey, weight='cost')
-    
     # print(f'path returned by networkx: {path}')
-    
-    path.append(path[0])
+
+    # Create full cycle path regardless
+    if path[0] != MY_PUBKEY:
+        path.insert(0, MY_PUBKEY)
+    if path[-1] != MY_PUBKEY:
+        path.append(MY_PUBKEY)
+
     # print(f'adjusted path: {path}')
-    chs = []
-    for i in range(len(path)-1):
-        ed = ln_g.get_edge_data(path[i], path[i+1])
-        chs.append(ed[0])
     # print(f'channels: {chs}')
+    cycle_detected = MY_PUBKEY in path[1:-1]
     
-    alias_path = [d_utils.get_alias(pkey) for pkey in path]
-    # print(alias_path)
-    c_buff = '                         '
-    tc = 0
-    for i, alias in enumerate(alias_path[:-1]):
-        curr_buff = c_buff[:len(c_buff) - len(alias)]
-        connecting_channel_cost_sat = round(chs[i]['cost'] * .001, 2)
-        ccc_str = f'{connecting_channel_cost_sat} sat' if connecting_channel_cost_sat != 0 else 'Free   '
-        base = chs[i]['base']
-        ppm = chs[i]['ppm']
-        print(f'{alias}{curr_buff}{ccc_str} ({base}msat, {ppm}ppm)')
-        tc += connecting_channel_cost_sat
-
-    print(f'AlphaStreet              {tc} sat Total\n')
-
-    if tc > max_fee:
-        print(f'No routes left below {max_fee} cents')
-        return
-    
-    return (int(chs[0]['chan_id']), path, ln_g)
+    return (path, ln_g)
         
 
 def build_lightning_multidigraph(sat_amt):
@@ -167,39 +145,61 @@ def add_directed_edge(G, chan_id, chan_point, source_pub, dest_pub,
         return 0
 
 
-def rebalance(source_pubkey, dest_pubkey, sat_amt, max_fee, 
-    max_hops, method=None):
-    sent = False
-    graph = None
-    attempt_number = 0
+def rebalance(source_pubkey, dest_pubkey, sat_amt, max_fee=None, 
+    max_hops=None, method=None, favorate_paths=None):
+    
+    graph = build_lightning_multidigraph(sat_amt)
 
+    # If source is specified, remove edge from source to my node to
+    # make sure I can't recieve through the same channel I am tryng to send through
+    if source_pubkey != MY_PUBKEY:
+        graph.remove_edge(source_pubkey, MY_PUBKEY, policy_holder=source_pubkey)
+
+    # If dest is specified, remove edge from my node to dest to
+    # make sure I can't send through the same channel I am tryng to recieve through
+    if dest_pubkey != MY_PUBKEY:
+        graph.remove_edge(MY_PUBKEY, dest_pubkey, policy_holder=MY_PUBKEY)
+    
+
+    sent = False
+    attempt_number = 0
     while not sent:
         attempt_number += 1
         print(f'Attempt #{attempt_number}')
-        if method == 'cheapest':
-            path_info = find_cheapest_path(source_pubkey, dest_pubkey, 
-                sat_amt, max_fee, max_hops, graph)
-        else:
-            path_info = find_shortest_path(
-                source_pubkey, dest_pubkey, sat_amt, graph
+
+        if favorate_paths:
+            print('Trying favorite...')
+            path_info = (
+                favorate_paths.pop(0).split(','), 
+                graph
             )
-        graph = path_info[2]
+        elif method == 'cheapest':
+            path_info = find_cheapest_path(source_pubkey, dest_pubkey, 
+                sat_amt, graph, max_fee, max_hops)
+        else:
+            path_info = find_shortest_path(source_pubkey, dest_pubkey, 
+                sat_amt, graph, max_fee, max_hops) 
+        graph = path_info[1]
         # print(path_info[0], path_info[1])
+
+        past_max_fee = print_route_summary(path_info[0], path_info[1], max_fee)
+        if past_max_fee:
+            break
 
         invoice = e.add_invoice(sat_amt)
         payment_hash = invoice['r_hash']
         lnurl = invoice['payment_request']
         payment_address = invoice['payment_addr']
-
         # print('Payment invoice...')
         # print(json.dumps(invoice, indent=4))
-
         
-        route = e.build_route(sat_amt, path_info[0], path_info[1][1:], payment_address)
+        out_chan_id = str(d_utils.get_chan_id_of_peers(
+                path_info[0][0],
+                path_info[0][1]
+            ))
+        route = e.build_route(sat_amt, out_chan_id, path_info[0][1:], payment_address)
         if build_route_failed(route, path_info, graph):
             continue
-
-
         # print(json.dumps(route, indent=4))
 
         resp = e.pay_to_route_synchronous(payment_hash, route['route'])
@@ -208,7 +208,7 @@ def rebalance(source_pubkey, dest_pubkey, sat_amt, max_fee,
 
         if pe:
             # print(pe)
-            hop_error_index = int(pe[-1:]) - 1
+            hop_error_index = int(pe[-1:])
             _source_pubkey = route['route']['hops'][hop_error_index-1]['pub_key']
             _dest_pubkey = route['route']['hops'][hop_error_index]['pub_key']
             s_alias = d_utils.get_alias(_source_pubkey)
@@ -221,9 +221,9 @@ def rebalance(source_pubkey, dest_pubkey, sat_amt, max_fee,
             print(f'Invoice:\n{json.dumps(invoice, indent=4)}')
             print(f'Route:\n{json.dumps(route, indent=4)}')
             print(f'Payment response:\n{json.dumps(resp, indent=4)}')
-            with open('verified_paths.txt', 'w') as pathfile:
-                pathfile.write(f'{d_utils.get_alias(dest_pubkey)}\n')
-                pathfile.write(','.join(path_info[1]))
+            with open('verified_paths.txt', 'a') as pathfile:
+                pathfile.write(f'\n{d_utils.get_alias(dest_pubkey)}\n')
+                pathfile.write(','.join(path_info[1]) + '\n')
             sent = True
         
         
@@ -232,10 +232,11 @@ def rebalance(source_pubkey, dest_pubkey, sat_amt, max_fee,
 def build_route_failed(route, path_info, graph):
     if list(route.keys())[0] == 'code':
         message = route['message']
+        print(message)
         if 'no matching' in message:
             _source_pubkey = message[-67:-1]
-            _dest_pubkey = path_info[1][
-                path_info[1].index(_source_pubkey) + 1
+            _dest_pubkey = path_info[0][
+                path_info[0].index(_source_pubkey) + 1
             ]
             print(f'{d_utils.get_alias(_source_pubkey)} ---> {d_utils.get_alias(_dest_pubkey)}: CCF, removing...\n')
             graph.remove_edge(_source_pubkey, _dest_pubkey)
@@ -245,4 +246,35 @@ def build_route_failed(route, path_info, graph):
             print(message)
             import sys
             sys.exit(0)
+    return False
+
+
+# Prints route summary
+# Returns True if route exceeds max fee
+# Returns False otherwise
+def print_route_summary(path, graph, max_fee):
+
+    chs = []
+    for i in range(len(path)-1):
+        ed = graph.get_edge_data(path[i], path[i+1])
+        chs.append(ed[0])
+
+    alias_path = [d_utils.get_alias(pkey) for pkey in path]
+    # print(alias_path)
+    c_buff = '                         '
+    tc = 0
+    for i, alias in enumerate(alias_path[:-1]):
+        curr_buff = c_buff[:len(c_buff) - len(alias)]
+        connecting_channel_cost_sat = round(chs[i]['cost'] * .001, 2)
+        ccc_str = f'{connecting_channel_cost_sat} sat' if connecting_channel_cost_sat != 0 else 'Free   '
+        base = chs[i]['base']
+        ppm = chs[i]['ppm']
+        print(f'{alias}{curr_buff}{ccc_str} ({base}msat, {ppm}ppm)')
+        tc += connecting_channel_cost_sat
+    print(f'AlphaStreet              {tc} sat Total\n')
+
+    if max_fee and (tc > max_fee):
+        print(f'No routes left below {max_fee} sats')
+        return True        
+    
     return False

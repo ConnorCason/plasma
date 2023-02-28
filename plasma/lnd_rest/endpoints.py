@@ -63,7 +63,7 @@ def build_route(sat_amt, outgoing_chan_id, hop_pubkeys, payment_address):
     _data = {
         'amt_msat': str((sat_amt) * (10**3)),
         'final_cltv_delta': 144,
-        'outgoing_chan_id': str(outgoing_chan_id),
+        'outgoing_chan_id': outgoing_chan_id,
         'hop_pubkeys': [encrypt_str(pub) for pub in hop_pubkeys],
         'payment_addr': payment_address
     }
@@ -99,7 +99,7 @@ def get_htlc_events():
 
 def add_invoice(sat_amt):
     _data = {
-        'expiry': 120,
+        'expiry': 300,
         'value': sat_amt
     }
     return send_request(
