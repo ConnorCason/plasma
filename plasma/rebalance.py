@@ -84,7 +84,15 @@ def find_cheapest_path(source_pubkey, dest_pubkey, sat_amt,
 
     # print(f'adjusted path: {path}')
     # print(f'channels: {chs}')
+
+    # if for some reason we end up with a cycle, prune it
     cycle_detected = MY_PUBKEY in path[1:-1]
+    if cycle_detected:
+        print('***CYCLE DETECTED???***')
+        print(f'Before prune: {path}')
+        index_of_mpk = path.index(MY_PUBKEY)
+        path = path[index_of_mpk:]
+        print(f'After prune: {path}')
     
     return (path, ln_g)
         
