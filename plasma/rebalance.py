@@ -11,7 +11,7 @@ import plasma.db.db_reader as reader
 import plasma.db.db_utils as d_utils
 
 MY_PUBKEY = os.environ.get('MY_PUBKEY')
-CUSTODIAL_HOPS = 2
+CHANNEL_CAP_MULTIPLIER = 2
 
 replace_dict = {
     "'": '"',
@@ -19,81 +19,44 @@ replace_dict = {
     'False': '"False"'
 }
 
-def find_shortest_path(source_pubkey, dest_pubkey, 
-    sat_amt, ln_g=None):
-    if not ln_g:
-        ln_g = build_lightning_multidigraph(sat_amt)
-        print(f'Finding shortest path for:\n~{sat_amt} sat\n-from: {source_pubkey}\n+to: {dest_pubkey}\n')
-        # Remove direct connection with dest peer
-        ln_g.remove_edge(MY_PUBKEY, dest_pubkey)
-    
-    path = nx.shortest_path(ln_g, source_pubkey,
-        dest_pubkey)
-    
-    path.append(MY_PUBKEY)
-    
-    chs = []
-    for i in range(len(path)-1):
-        ed = ln_g.get_edge_data(path[i], path[i+1])
-        chs.append(ed)
-
-    alias_path = [d_utils.get_alias(pkey) for pkey in path]
-    c_buff = '                         '
-    tc = 0
-    print(f'Outbound from            Cost')
-    for i, alias in enumerate(alias_path[:-1]):
-        curr_buff = c_buff[:len(c_buff) - len(alias)]
-        connecting_channel_cost_sat = round(chs[i][0]['cost'] * .001, 2)
-        ccc_str = f'{connecting_channel_cost_sat} sat' if connecting_channel_cost_sat != 0 else 'Free   '
-        base = chs[i][0]['base']
-        ppm = chs[i][0]['ppm']
-        print(f'{alias}{curr_buff}{ccc_str} ({base}msat, {ppm}ppm)')
-        tc += connecting_channel_cost_sat
-    lh_costs_str = f'{round(chs[-1][0]["cost"] * .001, 2)} sat'
-    lh_policy_str = f'({chs[-1][0]["base"]}msat, {chs[-1][0]["ppm"]}ppm)'
-    print(f'{alias_path[-1]}')
-    print(f'{c_buff}{tc} sat Total')
-    
-    sys.exit(0)
-    return (int(chs[0][0]['chan_id']), path, ln_g)
-
-
-def find_cheapest_path(source_pubkey, dest_pubkey, sat_amt, 
-                        ln_g, max_fee=None, max_hops=6):
-    
-    print(f'Finding cheapest path for:\n~{sat_amt} sat\n-from: {d_utils.get_alias(source_pubkey)}\n+to: {d_utils.get_alias(dest_pubkey)}\n')
-
+def find_shortest_path(source_pubkey, dest_pubkey, sat_amt, 
+                       ln_g, max_fee=None, max_hops=None):
     # Return list of pubkeys
-    path = nx.dijkstra_path(ln_g, source_pubkey,
-        dest_pubkey, weight='cost')
-    
-    if len(path) > (CUSTODIAL_HOPS + max_hops):
-        print('Doing graph algorithm magic...')
-    while len(path) > (CUSTODIAL_HOPS + max_hops):
-        # print(f'Removing edge {d_utils.get_alias(path[max_noncustodial_hops-1])} ---> {d_utils.get_alias(path[max_noncustodial_hops])}')
-        ln_g.remove_edge(path[max_hops-1], path[max_hops])
-        path = nx.dijkstra_path(ln_g, source_pubkey,
-            dest_pubkey, weight='cost')
-    # print(f'path returned by networkx: {path}')
+    path = nx.shortest_path(ln_g, source_pubkey, dest_pubkey) 
 
-    # Create full cycle path regardless
     if path[0] != MY_PUBKEY:
         path.insert(0, MY_PUBKEY)
     if path[-1] != MY_PUBKEY:
         path.append(MY_PUBKEY)
 
-    # print(f'adjusted path: {path}')
-    # print(f'channels: {chs}')
+    return (path, ln_g)
 
-    # if for some reason we end up with a cycle, prune it
-    cycle_detected = MY_PUBKEY in path[1:-1]
-    if cycle_detected:
-        print('***CYCLE DETECTED???***')
-        print(f'Before prune: {path}')
-        index_of_mpk = path.index(MY_PUBKEY)
-        path = path[index_of_mpk:]
-        print(f'After prune: {path}')
-    
+
+def find_cheapest_path(source_pubkey, dest_pubkey, sat_amt, 
+                        ln_g, max_fee=None, max_hops=None):
+
+    # Return list of pubkeys
+    path = nx.dijkstra_path(ln_g, source_pubkey,
+        dest_pubkey, weight='cost')
+
+    if max_hops:
+        if len(path) >= (max_hops):
+            print('Doing graph algorithm magic...')
+        while len(path) > (max_hops):
+            # print('This path is too long:')
+            # for i in path:
+            #     print(d_utils.get_alias(i))
+            # print(f'Removing edge {d_utils.get_alias(path[max_hops-1])} ---> {d_utils.get_alias(path[max_hops])}')
+            ln_g.remove_edge(path[max_hops-1], path[max_hops])
+            path = nx.dijkstra_path(ln_g, source_pubkey,
+                dest_pubkey, weight='cost')
+        
+
+    if path[0] != MY_PUBKEY:
+        path.insert(0, MY_PUBKEY)
+    if path[-1] != MY_PUBKEY:
+        path.append(MY_PUBKEY)
+
     return (path, ln_g)
         
 
@@ -104,25 +67,19 @@ def build_lightning_multidigraph(sat_amt):
     G = nx.MultiDiGraph()
 
     for index, row in all_channels.iterrows():
-        # if ((index+1) % 10000) == 0:
-        #     print(f'{index+1}/{num_channels} edges constructed')
-        
-        if int(row['capacity']) >= int(sat_amt * 1.5):
-            # Add edge from 1 to 2 with outbound policy for 1 as weight
+        if int(row['capacity']) >= int(sat_amt * CHANNEL_CAP_MULTIPLIER):
             add_directed_edge(G, row['channel_id'], row['chan_point'], 
                 row['node1_pub'], row['node2_pub'],row['node1_policy'],
-                row['capacity'], sat_amt, index)
-            
+                row['capacity'], sat_amt)
             add_directed_edge(G, row['channel_id'], row['chan_point'],
                 row['node2_pub'], row['node1_pub'], row['node2_policy'], 
-                row['capacity'], sat_amt, index)
-
+                row['capacity'], sat_amt)
     print(f'Generated {G} in {int(time.time()-s)} seconds\n')
     return G
         
 
 def add_directed_edge(G, chan_id, chan_point, source_pub, dest_pub, 
-    source_policy, capacity, sat_amt, index):
+    source_policy, capacity, sat_amt):
 
     if isinstance(source_policy, float):
         # print(f'Channel {index+1}: no outbound policy')
@@ -138,14 +95,13 @@ def add_directed_edge(G, chan_id, chan_point, source_pub, dest_pub,
         cost_msat = fees[0] + (fees[1] * .001 * sat_amt) if source_pub != MY_PUBKEY else 0
         G.add_edge(
             source_pub, 
-            dest_pub, 
+            dest_pub,
             chan_id=chan_id,
-            chan_point=chan_point, 
+            # chan_point=chan_point, 
             capacity=capacity,
             base=fees[0],
             ppm=fees[1],
-            cost=cost_msat,
-            policy_holder=source_pub
+            cost=cost_msat
         )
         return 1
     else:
@@ -157,18 +113,11 @@ def rebalance(source_pubkey, dest_pubkey, sat_amt, max_fee=None,
     max_hops=None, method=None, favorate_paths=None):
     
     graph = build_lightning_multidigraph(sat_amt)
-
-    # If source is specified, remove edge from source to my node to
-    # make sure I can't recieve through the same channel I am tryng to send through
-    if source_pubkey != MY_PUBKEY:
-        graph.remove_edge(source_pubkey, MY_PUBKEY, policy_holder=source_pubkey)
-
-    # If dest is specified, remove edge from my node to dest to
-    # make sure I can't send through the same channel I am tryng to recieve through
-    if dest_pubkey != MY_PUBKEY:
-        graph.remove_edge(MY_PUBKEY, dest_pubkey, policy_holder=MY_PUBKEY)
+    if source_pubkey != MY_PUBKEY and dest_pubkey != MY_PUBKEY:
+        graph.remove_edge(source_pubkey, MY_PUBKEY)
+        graph.remove_edge(MY_PUBKEY, dest_pubkey)
+    print(f'Finding cheapest path for:\n~{sat_amt} sat\n-from: {d_utils.get_alias(source_pubkey)}\n+to: {d_utils.get_alias(dest_pubkey)}\n')
     
-
     sent = False
     attempt_number = 0
     while not sent:
@@ -188,18 +137,19 @@ def rebalance(source_pubkey, dest_pubkey, sat_amt, max_fee=None,
             path_info = find_shortest_path(source_pubkey, dest_pubkey, 
                 sat_amt, graph, max_fee, max_hops) 
         graph = path_info[1]
-        # print(path_info[0], path_info[1])
 
-        past_max_fee = print_route_summary(path_info[0], path_info[1], max_fee)
-        if past_max_fee:
+        route_return_code = print_route_summary(path_info[0], path_info[1], max_fee)
+        if route_return_code == 1 and method == 'shortest':
+
+            continue
+        elif route_return_code == 1:
             break
+            
 
         invoice = e.add_invoice(sat_amt)
         payment_hash = invoice['r_hash']
         lnurl = invoice['payment_request']
         payment_address = invoice['payment_addr']
-        # print('Payment invoice...')
-        # print(json.dumps(invoice, indent=4))
         
         out_chan_id = str(d_utils.get_chan_id_of_peers(
                 path_info[0][0],
@@ -208,11 +158,9 @@ def rebalance(source_pubkey, dest_pubkey, sat_amt, max_fee=None,
         route = e.build_route(sat_amt, out_chan_id, path_info[0][1:], payment_address)
         if build_route_failed(route, path_info, graph):
             continue
-        # print(json.dumps(route, indent=4))
 
         resp = e.pay_to_route_synchronous(payment_hash, route['route'])
         pe = resp['payment_error']
-        # print(json.dumps(resp, indent=2))
 
         if pe:
             # print(pe)
@@ -235,12 +183,10 @@ def rebalance(source_pubkey, dest_pubkey, sat_amt, max_fee=None,
             sent = True
         
         
-
-
 def build_route_failed(route, path_info, graph):
     if list(route.keys())[0] == 'code':
         message = route['message']
-        print(message)
+        # print(message)
         if 'no matching' in message:
             _source_pubkey = message[-67:-1]
             _dest_pubkey = path_info[0][
@@ -258,19 +204,22 @@ def build_route_failed(route, path_info, graph):
 
 
 # Prints route summary
-# Returns True if route exceeds max fee
-# Returns False otherwise
+# Returns 0 if no issues found
+# Returns 1 if route exceeds max fee (or favorited route has insufficient capacity)
 def print_route_summary(path, graph, max_fee):
+
+    alias_path = [d_utils.get_alias(pkey) for pkey in path]
 
     chs = []
     for i in range(len(path)-1):
         ed = graph.get_edge_data(path[i], path[i+1])
         chs.append(ed[0])
-
-    alias_path = [d_utils.get_alias(pkey) for pkey in path]
+        
+    
     # print(alias_path)
     c_buff = '                         '
     tc = 0
+    max_cost_peer = (None, 0)
     for i, alias in enumerate(alias_path[:-1]):
         curr_buff = c_buff[:len(c_buff) - len(alias)]
         connecting_channel_cost_sat = round(chs[i]['cost'] * .001, 2)
@@ -279,10 +228,14 @@ def print_route_summary(path, graph, max_fee):
         ppm = chs[i]['ppm']
         print(f'{alias}{curr_buff}{ccc_str} ({base}msat, {ppm}ppm)')
         tc += connecting_channel_cost_sat
-    print(f'AlphaStreet              {tc} sat Total\n')
+        if connecting_channel_cost_sat > max_cost_peer[1]:
+            max_cost_peer = (i, connecting_channel_cost_sat)
+    print(f'AlphaStreet              {round(tc, 2)} sat Total\n')
 
     if max_fee and (tc > max_fee):
-        print(f'No routes left below {max_fee} sats')
-        return True        
+        print(f'{alias_path[max_cost_peer[0]]} --> {alias_path[max_cost_peer[0]+1]}: too expensive, removing...')
+        graph.remove_edge(path[max_cost_peer[0]], path[max_cost_peer[0]+1])
+        time.sleep(5)
+        return 1
     
-    return False
+    return 0
