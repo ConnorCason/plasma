@@ -38,6 +38,24 @@ def get_channels():
 def get_channel_info(channel_id):
     return send_request('GET', f'v1/graph/edge/{channel_id}')
 
+def update_channel_policy(chan_point, base_fee, ppm_fee):
+    chan_point_sep = chan_point.split(':')
+    lnd_ChannelPoint = {
+        'funding_txid_str': chan_point_sep[0],
+        'output_index': int(chan_point_sep[1])
+    }
+    _data = {
+        'chan_point': lnd_ChannelPoint,
+        'base_fee_msat': base_fee,
+        'fee_rate_ppm': ppm_fee,
+        'time_lock_delta': 144
+    }
+    return send_request(
+        'POST', 
+        'v1/chanpolicy', 
+        data=_data
+    )
+
 
 
 # Node
@@ -59,7 +77,6 @@ def get_routes(dest_pubkey, sat_amt):
     return send_request('GET', f'v1/graph/routes/{dest_pubkey}/{sat_amt}')['routes']
 
 def build_route(sat_amt, outgoing_chan_id, hop_pubkeys, payment_address):
-    
     _data = {
         'amt_msat': str((sat_amt) * (10**3)),
         'final_cltv_delta': 144,
@@ -124,3 +141,6 @@ def pay_to_route_synchronous(payment_hash, _route):
 
 def encrypt_str(_str):
     return base64.b64encode(bytes.fromhex(_str)).decode()
+
+# def decrypt_str(_str):
+#     return base64.

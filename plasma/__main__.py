@@ -11,7 +11,7 @@ import time
 
 
 if __name__ == "__main__":
-    writer.update_dbs(rebuild_network_topology=True)
+    writer.update_dbs(rebuild_network_topology=False)
 
     # AlphaStreet
     # _from = '0323aac79814817b023ce6e4eac13c961df213e773e901f74fa4c9477f22e0f304'
@@ -44,28 +44,40 @@ if __name__ == "__main__":
     # _to = '03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f'
 
     # CryptoChill
-    # _to = '03df3f0a2fd6bea5429a596461ce784c922b2981ada1af89cfefcd9ccfb16c16a7'
+    _to = '03df3f0a2fd6bea5429a596461ce784c922b2981ada1af89cfefcd9ccfb16c16a7'
 
     # WalletOfSatoshi.com
-    _to = '035e4ff418fc8b5554c5d9eea66396c227bd429a3251c8cbc711002ba215bfc226'
+    # _to = '035e4ff418fc8b5554c5d9eea66396c227bd429a3251c8cbc711002ba215bfc226'
 
-    sat_amt = 100000
-    max_fee = 15
-    max_hops = 3
+    # sat_amt = 500000
+    # max_fee = 100
+    # max_hops = 3
     # favorite_paths = [
     #     '0323aac79814817b023ce6e4eac13c961df213e773e901f74fa4c9477f22e0f304,026165850492521f4ac8abd9bd8088123446d126f648ca35e60f88177dc149ceb2,02c12363b0f977f2a23e4b9bb8555d2fd30a2ba9649e3bd6d9b00aca9569d43f15,03df3f0a2fd6bea5429a596461ce784c922b2981ada1af89cfefcd9ccfb16c16a7,0323aac79814817b023ce6e4eac13c961df213e773e901f74fa4c9477f22e0f304',
     #     '0323aac79814817b023ce6e4eac13c961df213e773e901f74fa4c9477f22e0f304,026165850492521f4ac8abd9bd8088123446d126f648ca35e60f88177dc149ceb2,0284a1e2bcd08ad7e204fdd67bdf1e18c711cf225182fa52e60623c189c2393a45,024bfaf0cabe7f874fd33ebf7c6f4e5385971fc504ef3f492432e9e3ec77e1b5cf,02315202505c36fc8d6e70a24a29b8bd046a6fccd81dcbff809226533c572b1d82,03df3f0a2fd6bea5429a596461ce784c922b2981ada1af89cfefcd9ccfb16c16a7,0323aac79814817b023ce6e4eac13c961df213e773e901f74fa4c9477f22e0f304'
     # ]
 
-    router.rebalance(
-        _from,
-        _to,
-        sat_amt,
-        max_fee=max_fee,
-        max_hops=max_hops,
-        method='cheapest'
-        # favorite_paths
+    # router.rebalance(
+    #     _from,
+    #     _to,
+    #     sat_amt,
+    #     max_fee=max_fee,
+    #     max_hops=max_hops,
+    #     method='cheapest'
+    #     # favorite_paths
+    # )
+
+    # chs = e.get_channels()
+    # ch = e.get_channel_info(855161661306044417)
+    # print(ch)
+    # print(json.dumps(chs, indent=2))
+    r = e.update_channel_policy(
+        'd162d84d59f061c4937618e60004b1500bd01756925729ef4b0f5aa492b6eec6:1', # Boltz
+        # '9de3d25fdf599e9f50e11293c5f65937e80e98c34ef9f1ba42fcffa8f02bfb39:1', # Crypto-RiS
+        0,
+        69
     )
+    print(r)
 
 
 
