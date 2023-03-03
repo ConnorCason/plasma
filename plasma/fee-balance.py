@@ -143,16 +143,16 @@ def fee_balance():
             chan_ratio = chan_balance/chan_cap
 
             suggested_chan_fee_structure = choose_fee(peer_fee_structure, chan_ratio)
-            logfile.write(f'{utils.get_alias(peer)}:\n')
-            logfile.write(f'  -Balance: {chan_balance} sat ({round((chan_ratio * 100), 2)}% local)\n')
-            logfile.write(f'  -Current fees: {chan_fee_structure[0]} msat, {chan_fee_structure[1]} ppm\n')
-            logfile.write(f'  -Suggested fees: {suggested_chan_fee_structure[0]} msat, {suggested_chan_fee_structure[1]} ppm\n')
             
             if (
                 int(chan_fee_structure[0]) != int(suggested_chan_fee_structure[0])
             ) or (
                 int(chan_fee_structure[1]) != int(suggested_chan_fee_structure[1])
             ):
+                logfile.write(f'{utils.get_alias(peer)}:\n')
+                logfile.write(f'  -Balance: {chan_balance} sat ({round((chan_ratio * 100), 2)}% local)\n')
+                logfile.write(f'  -Current fees: {chan_fee_structure[0]} msat, {chan_fee_structure[1]} ppm\n')
+                logfile.write(f'  -Suggested fees: {suggested_chan_fee_structure[0]} msat, {suggested_chan_fee_structure[1]} ppm\n')
                 update_chan_policy_reponse = e.update_channel_policy(
                     chan_point,
                     suggested_chan_fee_structure[0],
@@ -161,9 +161,12 @@ def fee_balance():
                 if len(update_chan_policy_reponse['failed_updates']):
                     logfile.write(f'Error, dumping: {update_chan_policy_reponse["failed_updates"]}\n')
                 else:
+                    
                     logfile.write('Fees updated\n\n')
-            else:
-                logfile.write('Fees at suggested rates\n\n')
+            # else:
+                # logfile.write('Fees at suggested rates\n\n')
+    logfile.close()
+    
 
 def choose_fee(fee_structure, chan_ratio):
     for tier_ratio, tier_fees in fee_structure.items():
