@@ -132,4 +132,6 @@ dmypy.json
 *.json
 *.cert
 *.csv
-*.txt
+
+verified_paths.txt
+htlc_events.txt
