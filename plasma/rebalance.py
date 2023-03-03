@@ -10,7 +10,7 @@ import plasma.lnd_rest.endpoints as e
 import plasma.db.db_reader as reader
 import plasma.db.db_utils as d_utils
 
-MY_PUBKEY = os.environ.get('MY_PUBKEY')
+MY_PUBKEY = '0323aac79814817b023ce6e4eac13c961df213e773e901f74fa4c9477f22e0f304'
 CHANNEL_CAP_MULTIPLIER = 2
 
 replace_dict = {
