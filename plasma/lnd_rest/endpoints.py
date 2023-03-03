@@ -2,7 +2,8 @@ import base64, codecs, json, os, requests
 
 from plasma.db.db_utils import get_alias
 
-MACAROON = codecs.encode(open('/home/umbrel/umbrel/app-data/lightning/data/lnd/data/chain/bitcoin/mainnet/admin.macaroon'))
+MACAROON_PATH = '/home/umbrel/umbrel/app-data/lightning/data/lnd/data/chain/bitcoin/mainnet/admin.macaroon'
+MACAROON = codecs.encode(open(MACAROON_PATH, 'rb').read(), 'hex')
 REST_HOST = 'umbrel.local:8080'
 TLS_PATH = '/home/umbrel/umbrel/app-data/lightning/data/lnd/tls.cert'
 # MACAROON = os.environ.get('LND_MACAROON_BINARY')
