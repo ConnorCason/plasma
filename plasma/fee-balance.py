@@ -114,7 +114,7 @@ SINK_FEE_STRUCTURE = {
 def fee_balance():
     current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H:%M')
     logfile = open(f'logs/fee_balance_{current_time}', 'w')
-    writer.update_dbs(rebuild_network_topology=False)
+    writer.update_dbs(rebuild_network_topology=True)
     channels = reader.get_local_channels()
     for index, channel in channels.iterrows():
         peer = channel['remote_pubkey']
