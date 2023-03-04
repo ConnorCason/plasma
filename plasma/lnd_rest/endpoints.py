@@ -2,13 +2,13 @@ import base64, codecs, json, os, requests
 
 from plasma.db.db_utils import get_alias
 
-# MACAROON_PATH = '/home/umbrel/umbrel/app-data/lightning/data/lnd/data/chain/bitcoin/mainnet/admin.macaroon'
-# MACAROON = codecs.encode(open(MACAROON_PATH, 'rb').read(), 'hex')
-# REST_HOST = 'umbrel.local:8080'
-# TLS_PATH = '/home/umbrel/umbrel/app-data/lightning/data/lnd/tls.cert'
-MACAROON = os.environ.get('LND_MACAROON_BINARY')
-REST_HOST = os.environ.get('LND_REST_HOST')
-TLS_PATH = os.environ.get('LND_TLS_PATH')
+MACAROON_PATH = '/home/umbrel/umbrel/app-data/lightning/data/lnd/data/chain/bitcoin/mainnet/admin.macaroon'
+MACAROON = codecs.encode(open(MACAROON_PATH, 'rb').read(), 'hex')
+REST_HOST = 'umbrel.local:8080'
+TLS_PATH = '/home/umbrel/umbrel/app-data/lightning/data/lnd/tls.cert'
+# MACAROON = os.environ.get('LND_MACAROON_BINARY')
+# REST_HOST = os.environ.get('LND_REST_HOST')
+# TLS_PATH = os.environ.get('LND_TLS_PATH')
 
 # Return models?
 def send_request(_type, endpoint, data=None, stream=None):
