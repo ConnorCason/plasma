@@ -69,6 +69,11 @@ NODES = {
         'type': 'standard',
         'multiplier': 1
     },
+    # WalletOfSatoshi.com
+    '035e4ff418fc8b5554c5d9eea66396c227bd429a3251c8cbc711002ba215bfc226': {
+        'type': 'standard',
+        'multiplier': 1
+    },
     # ACINQ
     '03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f': {
         'type': 'sink',
@@ -79,13 +84,13 @@ NODES = {
         'type': 'sink',
         'multiplier': 1
     },
-    # WalletOfSatoshi.com
-    '035e4ff418fc8b5554c5d9eea66396c227bd429a3251c8cbc711002ba215bfc226': {
+    # ln.nicehash.com [Nicehash]
+    '037659a0ac8eb3b8d0a720114efc861d3a940382dcfa1403746b4f8f6b2e8810ba': {
         'type': 'sink',
         'multiplier': 1
     },
-    # ln.nicehash.com [Nicehash]
-    '037659a0ac8eb3b8d0a720114efc861d3a940382dcfa1403746b4f8f6b2e8810ba': {
+    # LNBIG
+    '0390b5d4492dc2f5318e5233ab2cebf6d48914881a33ef6a9c6bcdbb433ad986d0': {
         'type': 'sink',
         'multiplier': 1
     }

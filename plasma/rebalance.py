@@ -113,8 +113,10 @@ def rebalance(source_pubkey, dest_pubkey, sat_amt, max_fee=None,
     max_hops=None, method=None, favorate_paths=None):
     
     graph = build_lightning_multidigraph(sat_amt)
-    if source_pubkey != MY_PUBKEY and dest_pubkey != MY_PUBKEY:
+    # 
+    if source_pubkey != MY_PUBKEY:
         graph.remove_edge(source_pubkey, MY_PUBKEY)
+    if dest_pubkey != MY_PUBKEY:
         graph.remove_edge(MY_PUBKEY, dest_pubkey)
     print(f'Finding cheapest path for:\n~{sat_amt} sat\n-from: {d_utils.get_alias(source_pubkey)}\n+to: {d_utils.get_alias(dest_pubkey)}\n')
     
@@ -164,7 +166,11 @@ def rebalance(source_pubkey, dest_pubkey, sat_amt, max_fee=None,
 
         if pe:
             # print(pe)
-            hop_error_index = int(pe[-1:])
+            try:
+                hop_error_index = int(pe[-1:])
+            except ValueError:
+                print('cant cast, see below')
+                print(pe)
             _source_pubkey = route['route']['hops'][hop_error_index-1]['pub_key']
             _dest_pubkey = route['route']['hops'][hop_error_index]['pub_key']
             s_alias = d_utils.get_alias(_source_pubkey)
